@@ -1,6 +1,8 @@
-from flask import Flask, render_template, request, redirect
+from flask import Flask, render_template, request, redirect, flash
+
 from flask_sqlalchemy import SQLAlchemy
 import os
+
 
 app = Flask(__name__, instance_relative_config=True)
 
@@ -9,6 +11,7 @@ os.makedirs(app.instance_path, exist_ok=True)
 
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///" + os.path.join(app.instance_path, "employee.db")
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+app.config['SECRET_KEY'] = 'supersecretkey'
 
 db = SQLAlchemy(app)
 
@@ -25,11 +28,17 @@ with app.app_context():
 @app.route("/", methods=['GET', 'POST'])
 def home():
     if request.method == "POST":
-        name = request.form['name']
-        email = request.form['email']
+        name = request.form.get('name','').strip()
+        email = request.form.get('email','').strip()
+        if not name or not email:
+            flash("All fields are required!", 'danger')
+            return redirect('/')
         employee = Employee(name=name, email=email)
         db.session.add(employee)
         db.session.commit()
+
+        flash("Yay! Success", "success")
+        return redirect('/')
 
     employees = Employee.query.all()
     return render_template("index.html", employees=employees)
